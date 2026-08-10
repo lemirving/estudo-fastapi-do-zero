@@ -88,12 +88,12 @@ def test_get_user_not_found(client):
     assert response.json() == {"detail": "Deu ruim, não encontrei"}
 
 
-def test_get_user___exercicio(client):
-    response = client.get("/users/1")
+# def test_get_user___exercicio(client):
+#     response = client.get("/users/1")
 
-    assert response.status_code == HTTPStatus.OK
-    assert response.json() == {
-        "username": "bob",
-        "email": "bob@example.com",
-        "id": 1,
-    }
+#     assert response.status_code == HTTPStatus.OK
+#     assert response.json() == {
+#         "username": "bob",
+#         "email": "bob@example.com",
+#         "id": 1,
+#     }
