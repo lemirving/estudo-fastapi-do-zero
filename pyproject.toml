@@ -27,7 +27,7 @@ dev = [
     "taskipy (>=1.14.1,<2.0.0)"
 ]
 
-[tool.ruuf]
+[tool.ruff]
 line-length = 79
 extend-exclude = ['migrations']
 
