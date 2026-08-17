@@ -1,12 +1,15 @@
 from dataclasses import asdict
 from datetime import datetime
 
+import pytest
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_zero.models import User
 
 
-def test_create_user(session, mock_db_time):
+@pytest.mark.asyncio
+async def test_create_user(session: AsyncSession, mock_db_time):
 
     with mock_db_time(model=User, time=datetime.now()) as time:
         # isso permite que tudo aconteça na data mock que eu
@@ -14,9 +17,11 @@ def test_create_user(session, mock_db_time):
         new_user = User(username="test", email="test@test", password="secret")
 
         session.add(new_user)
-        session.commit()
+        await session.commit()
 
-        user = session.scalar(select(User).where(User.username == "test"))
+        user = await session.scalar(
+            select(User).where(User.username == "test")
+        )
 
     assert asdict(user) == {
         "id": 1,

@@ -2,9 +2,10 @@ from contextlib import contextmanager
 from datetime import datetime
 
 import pytest
+import pytest_asyncio
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event
-from sqlalchemy.orm import Session
+from sqlalchemy import event
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import StaticPool
 
 from fastapi_zero.app import app
@@ -26,19 +27,23 @@ def client(session):
     app.dependency_overrides.clear()
 
 
-@pytest.fixture
-def session():
-    engine = create_engine(
-        "sqlite:///:memory:",
+@pytest_asyncio.fixture
+async def session():
+    engine = create_async_engine(
+        "sqlite+aiosqlite:///:memory:",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    table_reg.metadata.create_all(engine)
+    # Cria e dropa todas as tabelas de forma síncrona, pra que
+    # não haja problemas enquanto houver concorrência
+    async with engine.begin() as conn:
+        await conn.run_sync(table_reg.metadata.create_all)
 
-    with Session(engine) as session:
+    async with AsyncSession(engine, expire_on_commit=False) as session:
         yield session
 
-    table_reg.metadata.drop_all(engine)
+    async with engine.begin() as conn:
+        await conn.run_sync(table_reg.metadata.drop_all)
 
 
 @contextmanager
@@ -60,13 +65,14 @@ def _mock_db_time(model=User, time=datetime(2026, 8, 9)):
     event.remove(model, "before_insert", fake_time_hook)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 def mock_db_time():
     return _mock_db_time
 
 
-@pytest.fixture
-def user(session: Session):  # fixture para que tenhamos um user para tests
+@pytest_asyncio.fixture
+# fixture para que tenhamos um user para tests
+async def user(session: AsyncSession):
     password = "testtest"
     user = User(
         username="Teste",
@@ -74,8 +80,8 @@ def user(session: Session):  # fixture para que tenhamos um user para tests
         password=get_password_hash(password),
     )
     session.add(user)
-    session.commit()
-    session.refresh(user)
+    await session.commit()
+    await session.refresh(user)
 
     user.clean_password = password
     return user

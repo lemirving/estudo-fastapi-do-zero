@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.params import Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from fastapi_zero.database import get_session
 from fastapi_zero.models import User
@@ -13,16 +13,15 @@ from fastapi_zero.schemas import Token
 from fastapi_zero.security import create_access_token, verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
+Session = Annotated[AsyncSession, Depends(get_session)]
 OAuth2 = Annotated[OAuth2PasswordRequestForm, Depends()]
 
 
 @router.post("/login", response_model=Token)
-def login_for_access_token(
-    form_data: OAuth2,
-    session: Session = Depends(get_session),
-):
-    user = session.scalar(select(User).where(User.email == form_data.username))
+async def login_for_access_token(form_data: OAuth2, session: Session):
+    user = await session.scalar(
+        select(User).where(User.email == form_data.username)
+    )
 
     if not user:
         raise HTTPException(
